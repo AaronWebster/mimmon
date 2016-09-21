@@ -5,36 +5,36 @@
 #define CLIENT_ADDRESS 1
 #define SERVER_ADDRESS 2
 
-/* for feather32u4 */
+// AdaFruit Feather 32u4.
 #define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 7
 
-// Singleton instance of the radio driver
+#define RED_LED 13
+
+// Radio driver.  Defaults after init are 434.0MHz, 13dBm, Bw=125 kHz, Cr=4/5,
+// Sf=128chips/symbol, CRC on.
 RH_RF95 driver(RFM95_CS, RFM95_INT);
 
-// Class to manage message delivery and receipt, using the driver declared above
+// Message manager.
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
 
-
-#define RED_LED 13
+// Message buffer.
+uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
 
 void setup() {
   pinMode(RED_LED, OUTPUT);
   digitalWrite(RED_LED, LOW);
   Serial.begin(9600);
-  while (!Serial) ; // Wait for serial port to be available
-  if (!manager.init())
-    Serial.println("Init failed!");
-  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
-}
+  // Wait for serial port to be available
+  while (!Serial) delay(1);
 
-// Dont put this on the stack:
-uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+  if (!manager.init()) Serial.println("Init failed!");
+}
 
 void loop() {
   if (manager.available()) {
-    // Wait for a message addressed to us from the client
+    // Wait for a message addressed to from client.
     uint8_t len = sizeof(buf);
     uint8_t from;
     if (manager.recvfromAck(buf, &len, &from)) {
