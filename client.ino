@@ -71,7 +71,7 @@ void loop() {
   // Sleep until next reading.
   driver.sleep();
   int seconds_asleep = 0;
-  while (seconds_asleep < 60) {
+  while (seconds_asleep < 300) {
     seconds_asleep += Watchdog.sleep(5000) / 1000;
   }
 }
