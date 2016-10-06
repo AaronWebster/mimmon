@@ -24,7 +24,6 @@ RH_RF95 driver(RFM95_CS, RFM95_INT);
 RHReliableDatagram manager(driver, CLIENT_ADDRESS);
 
 // Measurement buffer.
-uint8_t buf[6];
 
 void setup() {
   pinMode(SONAR_TRIGGER, OUTPUT);
@@ -54,24 +53,45 @@ void setup() {
   // Wait until Channel Activity Detection shows no activity before
   // transmitting.
   driver.setCADTimeout(10000);
+
+  // Flush the serial buffer.
+  while (Serial1.available() > 0) {
+    Serial1.read();
+  }
 }
 
 void loop() {
-  // Trigger sonar, read response.
-  digitalWrite(SONAR_TRIGGER, HIGH);
-  delayMicroseconds(50);
-  digitalWrite(SONAR_TRIGGER, LOW);
-  Serial1.readBytes(&buf[0], 6);
-
-  // Send readings.
-  manager.sendtoWait(buf, sizeof(buf), SERVER_ADDRESS);
-  sprintf(buf, "B%04d\r", analogRead(BATT));
-  manager.sendtoWait(buf, sizeof(buf), SERVER_ADDRESS);
-
   // Sleep until next reading.
   driver.sleep();
   int seconds_asleep = 0;
   while (seconds_asleep < 300) {
     seconds_asleep += Watchdog.sleep(5000) / 1000;
   }
+
+  digitalWrite(SONAR_TRIGGER, HIGH);
+  delayMicroseconds(50);
+  digitalWrite(SONAR_TRIGGER, LOW);
+
+  unsigned long start = millis();
+  int reading = 0;
+  while (true) {
+    if (Serial1.read() == 'R') {
+      for (int i = 0; i < 4; ++i) {
+        int c = Serial1.read();
+        if (c >= '0' && c <= '9') return;
+        reading = reading * 10 + (c - '0')
+      }
+    }
+    if (millis() - start >= 5000) return;
+  }
+
+  if (reading <= 300) return;
+
+  // Send readings.
+  char buf[6];
+  sprintf(buf, "R%04d\r", reading);
+  manager.sendtoWait(buf, sizeof(buf), SERVER_ADDRESS);
+
+  sprintf(buf, "B%04d\r", analogRead(BATT));
+
 }
