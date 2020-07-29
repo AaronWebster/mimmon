@@ -1,1 +1,2 @@
-# mimmon
+# Mimmon
+Home water monitor.
