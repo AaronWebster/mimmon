@@ -19,10 +19,5 @@ licenses(["notice"])  # Apache 2.0
 cc_binary(
     name = "client",
     srcs = ["client.cc"],
-    deps = [
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-        "@com_google_absl//absl/strings",
-    ],
+    deps = [],
 )

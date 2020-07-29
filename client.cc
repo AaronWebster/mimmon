@@ -22,53 +22,41 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include <string>
 #include <vector>
 
-#include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
-#include "absl/strings/numbers.h"
-#include "absl/strings/str_cat.h"
-#include "absl/strings/str_split.h"
-
-ABSL_FLAG(std::string, interface, "", "Network interface.");
-ABSL_FLAG(std::string, address, "", "Listen address interface.");
+#define CHECK(ret)                                                           \
+  do {                                                                       \
+    if (ret == -1) {                                                         \
+      std::cout << __FILE__ << ":" << __LINE__ << "] " << std::strerror(ret) \
+                << " [" << ret << "]";                                       \
+      close(fd);                                                             \
+      return ret;                                                            \
+    }                                                                        \
+  } while (0)
 
 int main(int argc, char** argv) {
-  absl::ParseCommandLine(argc, argv);
+  const std::string interface = "eth0";
+  const std::string ip = "192.168.4.255";
+  const uint16_t port = 11222;
 
-  const std::string interface = absl::GetFlag(FLAGS_interface);
-  ABSL_RAW_CHECK(!interface.empty(), "Missing required --interface.");
+  int fd = socket(AF_INET, SOCK_DGRAM, 0);
+  CHECK(fd);
 
-  const std::string address = absl::GetFlag(FLAGS_address);
-  ABSL_RAW_CHECK(!address.empty(), "Missing required --address.");
+  constexpr int kTrue = 1;
+  CHECK(setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &kTrue, sizeof(kTrue)));
+  CHECK(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &kTrue, sizeof(kTrue)));
+  CHECK(setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, interface.c_str(),
+                   interface.size()));
 
   sockaddr socket_address{};
   socklen_t socket_address_size = 0;
-
-  constexpr int kTrue = 1;
-  int fd = socket(AF_INET, SOCK_DGRAM, 0);
-  ABSL_RAW_CHECK(
-      fd != -1,
-      absl::StrCat("Could not open socket: ", std::strerror(errno)).c_str());
-  setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &kTrue, sizeof(kTrue));
-  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &kTrue, sizeof(kTrue));
-  setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, interface.c_str(),
-             interface.size());
-
   sockaddr_in* addr = reinterpret_cast<sockaddr_in*>(&socket_address);
-  std::pair<std::string, std::string> ip_and_port_str =
-      absl::StrSplit(address, ':');
-
-  int port = -1;
-  ABSL_RAW_CHECK(absl::SimpleAtoi(ip_and_port_str.second, &port), "");
-  ABSL_RAW_CHECK(
-      inet_pton(AF_INET, ip_and_port_str.first.c_str(), &addr->sin_addr) != -1,
-      "");
+  CHECK(inet_pton(AF_INET, ip.c_str(), &addr->sin_addr));
   addr->sin_family = AF_INET;
-  addr->sin_port = htons(static_cast<uint16_t>(port));
+  addr->sin_port = htons(port);
   socket_address_size = sizeof(*addr);
-
-  ABSL_RAW_CHECK(bind(fd, &socket_address, socket_address_size) != -1, "");
+  CHECK(bind(fd, &socket_address, socket_address_size));
 
   msghdr header{};
   sockaddr_storage source_address{};
@@ -81,9 +69,13 @@ int main(int argc, char** argv) {
   header.msg_iovlen = 1;
   iov.iov_base = &buf[0];
   iov.iov_len = buf.size();
-  ABSL_RAW_CHECK(recvmsg(fd, &header, 0) > 0, "");
 
-  std::cout << buf << std::endl;
+  while (true) {
+    int bytes_read = recvmsg(fd, &header, 0);
+    if (bytes_read > 0) {
+      std::cout << buf << std::endl;
+    }
+  }
 
   close(fd);
 }
