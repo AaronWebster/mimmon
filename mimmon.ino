@@ -4,21 +4,22 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
 
+// Base URL for HTTP GET requests.
 String kBaseUrl = "https://docs.google.com/forms/d/e/YOUR_SPREADSHEET_ID/formResponse?entry.ENTRY_CODE=";
-// Client fingerprint, to generate, use:
-//   openssl s_client -connect docs.google.com:443 < /dev/null 2>/dev/null | openssl x509 -fingerprint -noout -in /dev/stdin
-constexpr char kFingerprint[] = "5B:E1:DA:24:FE:99:92:FB:D2:AB:A8:DD:E9:49:AF:3A:56:43:F1:B4";
+// WiFi SSID and password.
 constexpr char kApSsid[] = "YOUR_SSID";
 constexpr char kApPassword[] = "";
+// Pin to read meter pulse.
 constexpr int kPin = 5;
+// Debounce delay.
+constexpr uint32_t kDebounceDelayMs = 50;
 
 ESP8266WiFiMulti WiFiMulti;
 
 int pulse_count = 0;
 int previous_state = LOW;
 int current_state;
-unsigned long previous_debounce_ms = 0;
-constexpr unsigned long kDebounceDelayMs = 50;
+uint32_t previous_debounce_ms = 0;
 
 void setup() {
   pinMode(kPin, INPUT_PULLUP);
@@ -27,11 +28,7 @@ void setup() {
   Serial.println();
   Serial.println();
 
-  for (uint8_t t = 4; t > 0; t--) {
-    Serial.printf("[SETUP] WAIT %d...\n", t);
-    Serial.flush();
-    delay(1000);
-  }
+  delay(4000);
 
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP(kApSsid, kApPassword);
@@ -50,7 +47,7 @@ void loop() {
       current_state = state;
       if (current_state == LOW) {
         std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
-        client->setFingerprint(kFingerprint);
+        client->setInsecure();
 
         HTTPClient https;
         if (https.begin(*client, kBaseUrl + String(++pulse_count))) {
@@ -62,7 +59,7 @@ void loop() {
           }
           https.end();
         } else {
-          Serial.println("Unable to connect.");
+          Serial.println("Connection failed.");
         }
       }
     }
