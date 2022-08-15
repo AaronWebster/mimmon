@@ -18,7 +18,15 @@ licenses(["notice"])  # Apache 2.0
 
 load("@com_google_emboss//:build_defs.bzl", "emboss_cc_library")
 
-emboss_cc_library(
-    name = "messages",
-    srcs = ["messages.emb"],
+cc_binary(
+    name = "gateway",
+    srcs = ["gateway.cc"],
+    deps = [
+        "@com_github_google_glog//:glog",
+        "@com_github_libevent_libevent//:event",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/strings",
+    ],
 )
