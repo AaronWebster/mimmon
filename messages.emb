@@ -1,0 +1,7 @@
+[$default byte_order: "LittleEndian"]
+[(cpp) namespace: "mimmon"]
+
+struct Message:
+  -- Controller data
+
+  0  [+1]  UInt            reserved
