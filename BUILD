@@ -22,11 +22,23 @@ cc_binary(
     name = "gateway",
     srcs = ["gateway.cc"],
     deps = [
-        "@com_github_google_glog//:glog",
-        "@com_github_libevent_libevent//:event",
+	":logging",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse",
-        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/flags:parse"
     ],
 )
+
+cc_library(
+    name = "logging",
+    hdrs = ["logging.h"],
+    deps = [ ],
+)
+
+
+emboss_cc_library(
+    name = "messages_emboss",
+    srcs = ["messages.emb"],
+    deps = [ ],
+)
+
