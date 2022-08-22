@@ -18,25 +18,29 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "com_google_emboss",
-    branch = "master",
+    commit = "fea80b7d371ae47ebed019279b3ee643d44bcbf6",
     remote = "https://github.com/google/emboss",
+    shallow_since = "1657225828 -0700",
 )
 
 git_repository(
     name = "com_google_absl",
-    branch = "master",
+    commit = "f7474d4961b769c34a08475110ba391e5926e893",
     remote = "https://github.com/abseil/abseil-cpp",
+    shallow_since = "1660847920 -0700",
 )
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 http_archive(
     name = "bazel_skylib",
+    sha256 = "f7be3474d42aae265405a592bb7da8e171919d74c16f082a5457840f06054728",
     urls = [
         "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz",
         "https://github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz",
     ],
-    sha256 = "f7be3474d42aae265405a592bb7da8e171919d74c16f082a5457840f06054728",
 )
-load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
-bazel_skylib_workspace()
 
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()

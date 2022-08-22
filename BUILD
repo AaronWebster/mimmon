@@ -22,23 +22,24 @@ cc_binary(
     name = "gateway",
     srcs = ["gateway.cc"],
     deps = [
-	":logging",
+        ":logging",
+        ":messages_emboss",
         "@com_google_absl//absl/base",
+        "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/flags:parse"
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_emboss//runtime/cpp:cpp_utils",
     ],
 )
 
 cc_library(
     name = "logging",
     hdrs = ["logging.h"],
-    deps = [ ],
+    deps = [],
 )
-
 
 emboss_cc_library(
     name = "messages_emboss",
     srcs = ["messages.emb"],
-    deps = [ ],
+    deps = [],
 )
-
