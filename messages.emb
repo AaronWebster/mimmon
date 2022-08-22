@@ -2,7 +2,7 @@
 [(cpp) namespace: "mimmon"]
 
 
-enum MeasurementUnit:
+enum Unit:
   UNKNOWN = 0
   CELSIUS = 1
   PASCAL  = 2
@@ -10,30 +10,32 @@ enum MeasurementUnit:
   SECOND  = 4
 
 
-enum MeasurementTarget:
+enum Target:
   UNKNOWN = 0
   SELF    = 1
   TANK    = 2
+  ALL     = 255
 
 
 enum MessageType:
   UNKNOWN              = 0
-  MEASUREMENT_REQUEST  = 1
-  MEASUREMENT_RESPONSE = 2
+  PING                 = 1
+  MEASUREMENT_REQUEST  = 2
+  MEASUREMENT_RESPONSE = 3
 
 
 struct Message:
   -- Station message.
-  let target_all_stations = 0xffffffffffff
+  let all_stations = 0xffffffffffff
   0  [+1]  bits:
-    0  [+4]       UInt               version
-    4  [+4]       UInt               ttl
+    0  [+4]       UInt         version
+    4  [+4]       UInt         ttl
 
-  1  [+1]         MessageType        message_type
-  2  [+4]         UInt               sequence_id
-  6  [+6]         UInt               station_id
-  12 [+6]         UInt               target_station_id
-  18 [+1]         MeasurementTarget  measurement_target
-  19 [+1]         UInt               measurement_target_id
-  20 [+1]         MeasurementUnit    measurement_unit
-  21 [+4]         Float              measurement_value
+  1  [+1]         MessageType  message_type
+  2  [+4]         UInt         sequence_id
+  6  [+6]         UInt         source_station_id
+  12 [+6]         UInt         destination_station_id
+  18 [+1]         Target       target
+  19 [+1]         UInt         target_id
+  20 [+1]         Unit         unit
+  21 [+4]         Float        value
