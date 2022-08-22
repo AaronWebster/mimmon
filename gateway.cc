@@ -70,7 +70,7 @@ void Main() {
   PCHECK(fd != -1);
   PCHECK(SetSerialAttributes(fd, baud) == 0);
 
-  std::vector<uint8_t> message_buf(1024);
+  std::vector<uint8_t> message_buf(Message::MaxSizeInBytes());
   auto message = MakeMessageView(&message_buf);
   const int bytes_read = read(fd, message_buf.data(), message_buf.size());
   PCHECK(bytes_read != -1);
