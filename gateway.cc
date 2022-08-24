@@ -41,17 +41,14 @@ int SetSerialAttributes(int fd, int baud) {
   tty.c_iflag &= ~IGNBRK;  // Disable break processing.
   tty.c_lflag = 0;  // Disable signaling chars, echo, and canonical processing.
   tty.c_oflag = 0;  // Disable remapping and delays.
-  tty.c_cc[VMIN] = 0;   // Read doesn't block.
-  tty.c_cc[VTIME] = 5;  // 0.5 seconds read timeout.
+  tty.c_cc[VMIN] = 33;    // Read blocks.
+  tty.c_cc[VTIME] = 10;  // 1s timeout.
 
   tty.c_iflag &= ~(IXON | IXOFF | IXANY);  // Disable xon/xoff ctrl.
   tty.c_cflag |= (CLOCAL | CREAD);    // Ignore modem controls, enable reading.
   tty.c_cflag &= ~(PARENB | PARODD);  // Disable parity.
   tty.c_cflag &= ~CSTOPB;
   tty.c_cflag &= ~CRTSCTS;
-
-  tty.c_cc[VMIN] = 1;   // Blocking.
-  tty.c_cc[VTIME] = 5;  // 0.5s.
 
   return tcsetattr(fd, TCSANOW, &tty);
 }
@@ -70,11 +67,26 @@ void Main() {
   PCHECK(fd != -1);
   PCHECK(SetSerialAttributes(fd, baud) == 0);
 
-  std::vector<uint8_t> message_buf(Message::MaxSizeInBytes());
-  auto message = MakeMessageView(&message_buf);
-  const int bytes_read = read(fd, message_buf.data(), message_buf.size());
-  PCHECK(bytes_read != -1);
-  std::cerr << emboss::WriteToString(message) << std::endl;
+  std::string buf(1024,0);;
+  int pos = 0;
+  for (;;) {
+    const int bytes_read = read(fd, buf.data() + pos, buf.size() - pos);
+    PCHECK(bytes_read != -1);
+    pos += bytes_read;
+    if(pos < 2* Message::MaxSizeInBytes()) continue;
+
+    // std::cout << buf <<std::endl;
+    // buf.resize(bytes_read);
+    // message_buf.insert(message_buf.end(), buf.begin(), buf.end());
+
+    // auto pos = buf.find("mimmon");
+    // std::cout << pos << std::endl;
+    // if (pos == std::string::npos) continue;
+    // if (message_buf.size() - pos < mimmon::Message::MaxSizeInBytes()) continue;
+    // auto message = MakeMessageView(message_buf.data() + pos,
+    //                                mimmon::Message::MaxSizeInBytes());
+    // std::cerr << emboss::WriteToString(message) << std::endl;
+  }
 }
 
 }  // namespace

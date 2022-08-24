@@ -27,15 +27,18 @@ enum MessageType:
 struct Message:
   -- Station message.
   let all_stations = 0xffffffffffff
-  0  [+1]  bits:
+  let magic_value = 0x6d696d6d6f6e
+  0  [+6]         UInt:8[]         magic
+  6  [+1]  bits:
     0  [+4]       UInt         version
     4  [+4]       UInt         ttl
 
-  1  [+1]         MessageType  message_type
-  2  [+4]         UInt         sequence_id
-  6  [+6]         UInt         source_station_id
-  12 [+6]         UInt         destination_station_id
-  18 [+1]         Target       target
-  19 [+1]         UInt         target_id
-  20 [+1]         Unit         unit
-  21 [+4]         Float        value
+  7  [+1]         UInt         message_size
+  8  [+1]         MessageType  message_type
+  9  [+4]         UInt         sequence_id
+  13  [+6]         UInt         source_station_id
+  19 [+6]         UInt         destination_station_id
+  25 [+1]         Target       target
+  26 [+1]         UInt         target_id
+  27 [+1]         Unit         unit
+  29 [+4]         Float        value
