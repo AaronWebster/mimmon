@@ -38,6 +38,13 @@ cc_library(
     deps = [],
 )
 
+cc_library(
+    name = "station",
+    srcs = ["station.cc"],
+    hdrs = ["station.h"],
+    deps = [":messages_emboss"],
+)
+
 emboss_cc_library(
     name = "messages_emboss",
     srcs = ["messages.emb"],
