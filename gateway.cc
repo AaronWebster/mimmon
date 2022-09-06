@@ -1,17 +1,18 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <string.h>
 #include <termios.h>
 #include <unistd.h>
 
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <vector>
 
 #include "absl/cleanup/cleanup.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "event2/bufferevent.h"
 #include "event2/event.h"
 #include "event2/thread.h"
 #include "logging.h"
@@ -21,82 +22,109 @@
 
 ABSL_FLAG(std::string, serial_port, "/dev/ttyACM0",
           "Serial port to listen on.");
-ABSL_FLAG(int, baud, 115200, "Serial baud, 8 bits, no parity.");
 
 namespace mimmon {
 namespace {
 
-// Sets serial attributes.  Returns 0 on success, otherwise -1 and errno
-// is set.
-int SetSerialAttributes(int fd, int baud) {
-  termios tty{};
-  int status = tcgetattr(fd, &tty);
-  if (status != 0)
-    return status;
+class Gateway {
+public:
+  Gateway(const std::string &serial_port, event_base *ev_base)
+      : ev_base_(ev_base) {
+    fd_ = open(serial_port.c_str(), O_RDWR | O_NOCTTY | O_CLOEXEC | O_NONBLOCK);
+    PCHECK(fd_ != -1);
 
-  cfsetospeed(&tty, baud);
-  cfsetispeed(&tty, baud);
+    termios tty{};
+    cfmakeraw(&tty);
+    tty.c_cflag = CS8 | CREAD | CLOCAL;
+    cfsetspeed(&tty, B115200);
+    PCHECK(tcsetattr(fd_, TCSANOW, &tty) != -1);
+    PCHECK(tcflush(fd_, TCIOFLUSH) != -1);
+    connected_ = true;
 
-  // 8-bit chars and disable IGNBRK for mismatched speed tests; otherwise
-  // receive break as \000 chars.
-  tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;
-  tty.c_iflag &= ~IGNBRK; // Disable break processing.
-  tty.c_lflag = 0; // Disable signaling chars, echo, and canonical processing.
-  tty.c_oflag = 0; // Disable remapping and delays.
-  tty.c_cc[VMIN] = 33;  // Read blocks.
-  tty.c_cc[VTIME] = 10; // 1s timeout.
+    connection_ = bufferevent_socket_new(ev_base_, fd_, BEV_OPT_CLOSE_ON_FREE);
 
-  tty.c_iflag &= ~(IXON | IXOFF | IXANY); // Disable xon/xoff ctrl.
-  tty.c_cflag |= (CLOCAL | CREAD);   // Ignore modem controls, enable reading.
-  tty.c_cflag &= ~(PARENB | PARODD); // Disable parity.
-  tty.c_cflag &= ~CSTOPB;
-  tty.c_cflag &= ~CRTSCTS;
+    bufferevent_setcb(connection_, ReadCallback, WriteCallback, EventCallback,
+                      this);
+    bufferevent_enable(connection_, EV_READ | EV_WRITE);
+  }
 
-  return tcsetattr(fd, TCSANOW, &tty);
-}
+  ~Gateway() {
+    bufferevent_free(connection_);
+    close(fd_);
+  }
+
+private:
+  static void ReadCallback(bufferevent *bev, void *void_self) {
+    auto self = static_cast<Gateway *>(void_self);
+
+    std::vector<uint8_t> buf(1024);
+    buf.resize(bufferevent_read(self->connection_, buf.data(), buf.size()));
+    std::cout << buf.size() << std::endl;
+  }
+
+  static void WriteCallback(bufferevent *bev, void *void_self) {
+    // auto self = static_cast<Gateway *>(void_self);
+  }
+
+  static void EventCallback(bufferevent *bev, int16_t events, void *void_self) {
+    auto self = static_cast<Gateway *>(void_self);
+    if (events & BEV_EVENT_CONNECTED) {
+      std::cerr << "Connected." << std::endl;
+      bufferevent_enable(self->connection_, EV_READ | EV_WRITE);
+      return;
+    }
+
+    if (events & BEV_EVENT_EOF) {
+      std::cerr << "Closed." << std::endl;
+      return;
+    }
+
+    if (events & BEV_EVENT_ERROR) {
+      std::cerr << "Error: "
+                << evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR())
+                << std::endl;
+      return;
+    }
+  }
+
+  event_base *ev_base_ = nullptr;
+  int fd_ = -1;
+  bufferevent *connection_ = nullptr;
+  bool connected_ = false;
+};
 
 void Main() {
+  const std::string serial_port = absl::GetFlag(FLAGS_serial_port);
+  CHECK(!serial_port.empty());
 
   evthread_use_pthreads();
   event_base *ev_base = event_base_new();
+  CHECK(ev_base != nullptr);
   auto event_base_cleanup =
       absl::MakeCleanup([ev_base] { event_base_free(ev_base); });
 
-  const std::string serial_port = absl::GetFlag(FLAGS_serial_port);
-  CHECK(!serial_port.empty());
-  const int baud = absl::GetFlag(FLAGS_baud);
-  CHECK(baud > 0);
+  event *sigint_event = evsignal_new(
+      ev_base, SIGINT,
+      [](int, int16_t, void *ev_base) {
+        event_base_loopexit(static_cast<event_base *>(ev_base), nullptr);
+      },
+      ev_base);
+  auto sigint_event_cleanup =
+      absl::MakeCleanup([sigint_event] { event_free(sigint_event); });
 
-  std::cerr << "Listening on " << serial_port << " " << baud << ",8n1"
-            << std::endl;
+  event *sigterm_event = evsignal_new(
+      ev_base, SIGTERM,
+      [](int, int16_t, void *ev_base) {
+        event_base_loopexit(static_cast<event_base *>(ev_base), nullptr);
+      },
+      ev_base);
+  auto sigterm_event_cleanup =
+      absl::MakeCleanup([sigterm_event] { event_free(sigterm_event); });
 
-  int fd =
-      open(serial_port.c_str(), O_RDWR | O_NOCTTY | O_CLOEXEC | O_NONBLOCK);
-  auto fd_cleanup = absl::MakeCleanup([fd] { close(fd); });
-  PCHECK(fd != -1);
-  PCHECK(SetSerialAttributes(fd, baud) == 0);
+  Gateway gateway(serial_port, ev_base);
 
-  event_base_dispatch(ev_base);
-  // std::string buf(1024,0);;
-  // int pos = 0;
-  // for (;;) {
-  //   const int bytes_read = read(fd, buf.data() + pos, buf.size() - pos);
-  //   PCHECK(bytes_read != -1);
-  //   pos += bytes_read;
-  //   if(pos < 2* Message::MaxSizeInBytes()) continue;
-
-  // std::cout << buf <<std::endl;
-  // buf.resize(bytes_read);
-  // message_buf.insert(message_buf.end(), buf.begin(), buf.end());
-
-  // auto pos = buf.find("mimmon");
-  // std::cout << pos << std::endl;
-  // if (pos == std::string::npos) continue;
-  // if (message_buf.size() - pos < mimmon::Message::MaxSizeInBytes()) continue;
-  // auto message = MakeMessageView(message_buf.data() + pos,
-  //                                mimmon::Message::MaxSizeInBytes());
-  // std::cerr << emboss::WriteToString(message) << std::endl;
-  // }
+  CHECK(!event_base_dispatch(ev_base));
+  libevent_global_shutdown();
 }
 
 } // namespace
