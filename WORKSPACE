@@ -14,6 +14,12 @@
 
 workspace(name = "com_webster_mimmon")
 
+load("//3rdparty/bazel-rules-libevent:repos.bzl", libevent_repos="repos")
+libevent_repos()
+
+load("@com_github_3rdparty_bazel_rules_libevent//bazel:deps.bzl", libevent_deps="deps")
+libevent_deps()
+
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(

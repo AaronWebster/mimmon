@@ -25,6 +25,7 @@ cc_binary(
         ":logging",
         ":messages_emboss",
         "@com_google_absl//absl/base",
+	"@com_github_libevent_libevent//:event",
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
@@ -38,12 +39,12 @@ cc_library(
     deps = [],
 )
 
-cc_library(
-    name = "station",
-    srcs = ["station.cc"],
-    hdrs = ["station.h"],
-    deps = [":messages_emboss"],
-)
+#cc_library(
+#    name = "station",
+#    srcs = ["station.cc"],
+#    hdrs = ["station.h"],
+#    deps = [":messages_emboss"],
+#)
 
 emboss_cc_library(
     name = "messages_emboss",
