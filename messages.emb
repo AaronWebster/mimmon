@@ -1,42 +1,7 @@
 [$default byte_order: "LittleEndian"]
 [(cpp) namespace: "mimmon"]
 
-
-enum Unit:
-  UNKNOWN = 0
-  CELSIUS = 1
-  PASCAL  = 2
-  VOLTS   = 3
-  SECOND  = 4
-
-
-enum Target:
-  UNKNOWN = 0
-  SELF    = 1
-  TANK    = 2
-  ALL     = 255
-
-
-enum MessageType:
-  UNKNOWN              = 0
-  PING                 = 1
-  MEASUREMENT_REQUEST  = 2
-  MEASUREMENT_RESPONSE = 3
-
-
 struct Message:
-  -- Station message.
-  let all_stations = 0xffffffffffff
   let magic_value = 0x6d696d6d6f6e
-  0  [+6]  UInt:8[]     magic
-  6  [+1]  UInt         version
-  7  [+1]  UInt         ttl
-  8  [+1]  UInt         message_size
-  9  [+1]  MessageType  message_type
-  10 [+4]  UInt         sequence_id
-  14 [+6]  UInt         source_station_id
-  20 [+6]  UInt         destination_station_id
-  26 [+1]  Target       target
-  27 [+1]  UInt         target_id
-  28 [+1]  Unit         unit
-  30 [+4]  Float        value
+  0  [+6]  UInt        magic [requires: this == Message.magic_value]
+  6  [+4]  UInt        sequence_id

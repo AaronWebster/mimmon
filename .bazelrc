@@ -1,5 +1,5 @@
 build --repo_env=CC=clang
-build --cxxopt='-std=c++17'
-build --host_cxxopt='-std=c++17'
+build --cxxopt='-std=c++20'
+build --host_cxxopt='-std=c++20'
 #build --copt=-Wall --copt=-Werror --host_copt=-Wall --host_copt=-Werror
 #build --copt=-Wno-unused --host_copt=-Wno-unuse

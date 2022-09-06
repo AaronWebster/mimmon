@@ -2,3 +2,4 @@ bazel-bin
 bazel-mimmon
 bazel-out
 bazel-testlogs
+station/*.h

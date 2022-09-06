@@ -12,6 +12,7 @@
 #include "absl/cleanup/cleanup.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "event2/buffer.h"
 #include "event2/bufferevent.h"
 #include "event2/event.h"
 #include "event2/thread.h"
@@ -20,14 +21,14 @@
 #include "runtime/cpp/emboss_cpp_util.h"
 #include "runtime/cpp/emboss_text_util.h"
 
-ABSL_FLAG(std::string, serial_port, "/dev/ttyACM0",
+ABSL_FLAG(std::string, serial_port, "/dev/ttyUSB0",
           "Serial port to listen on.");
 
 namespace mimmon {
 namespace {
 
 class Gateway {
-public:
+ public:
   Gateway(const std::string &serial_port, event_base *ev_base)
       : ev_base_(ev_base) {
     fd_ = open(serial_port.c_str(), O_RDWR | O_NOCTTY | O_CLOEXEC | O_NONBLOCK);
@@ -41,7 +42,9 @@ public:
     PCHECK(tcflush(fd_, TCIOFLUSH) != -1);
     connected_ = true;
 
-    connection_ = bufferevent_socket_new(ev_base_, fd_, BEV_OPT_CLOSE_ON_FREE);
+    connection_ = bufferevent_socket_new(
+        ev_base_, fd_,
+        BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_CLOSE_ON_FREE);
 
     bufferevent_setcb(connection_, ReadCallback, WriteCallback, EventCallback,
                       this);
@@ -53,13 +56,26 @@ public:
     close(fd_);
   }
 
-private:
+ private:
   static void ReadCallback(bufferevent *bev, void *void_self) {
     auto self = static_cast<Gateway *>(void_self);
+    auto &buf_ = self->buf_;
 
-    std::vector<uint8_t> buf(1024);
-    buf.resize(bufferevent_read(self->connection_, buf.data(), buf.size()));
-    std::cout << buf.size() << std::endl;
+    std::vector<uint8_t> tmp(
+        evbuffer_get_length(bufferevent_get_input(self->connection_)));
+    tmp.resize(bufferevent_read(self->connection_, tmp.data(), tmp.size()));
+    std::copy(tmp.begin(), tmp.end(), std::back_inserter(buf_));
+
+    if (buf_.size() < 2 * MessageView::SizeInBytes()) return;
+    for (int offset = 0; offset < MessageView::SizeInBytes(); ++offset) {
+      auto view =
+          MakeMessageView(buf_.data() + offset, MessageView::SizeInBytes());
+      if (view.Ok()) {
+        std::cout << emboss::WriteToString(view) << std::endl;
+        buf_.erase(buf_.begin() + offset,
+                   buf_.begin() + offset + MessageView::SizeInBytes());
+      }
+    }
   }
 
   static void WriteCallback(bufferevent *bev, void *void_self) {
@@ -91,6 +107,7 @@ private:
   int fd_ = -1;
   bufferevent *connection_ = nullptr;
   bool connected_ = false;
+  std::vector<uint8_t> buf_;
 };
 
 void Main() {
@@ -127,8 +144,8 @@ void Main() {
   libevent_global_shutdown();
 }
 
-} // namespace
-} // namespace mimmon
+}  // namespace
+}  // namespace mimmon
 
 int main(int argc, char **argv) {
   absl::ParseCommandLine(argc, argv);
