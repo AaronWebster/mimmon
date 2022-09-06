@@ -1,1 +1,4 @@
-bazel-*
+bazel-bin
+bazel-mimmon
+bazel-out
+bazel-testlogs
