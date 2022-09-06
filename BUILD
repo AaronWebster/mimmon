@@ -24,8 +24,8 @@ cc_binary(
     deps = [
         ":logging",
         ":messages_emboss",
+        "@com_github_libevent_libevent//:event",
         "@com_google_absl//absl/base",
-	"@com_github_libevent_libevent//:event",
         "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",

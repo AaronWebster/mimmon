@@ -1,7 +1,8 @@
 [$default byte_order: "LittleEndian"]
 [(cpp) namespace: "mimmon"]
 
+
 struct Message:
   let magic_value = 0x6d696d6d6f6e
-  0  [+6]  UInt        magic [requires: this == Message.magic_value]
-  6  [+4]  UInt        sequence_id
+  0 [+6]  UInt  magic        [requires: this == Message.magic_value]
+  6 [+4]  UInt  sequence_id
