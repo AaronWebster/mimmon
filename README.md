@@ -7,3 +7,12 @@ Water monitoring system. Uses the
 at 433MHz.
 
 bazel run   --cxxopt='-std=c++17' :gateway -- --logtostderr --minloglevel=0
+
+## CRC
+
+Using [pycrc](https://pycrc.org/)
+
+```
+python3.9 pycrc.py --model crc-32c --algorithm table-driven --generate h -o crc32c.h
+python3.9 pycrc.py --model crc-32c --algorithm table-driven --generate c -o crc32c.cc
+```

@@ -12,6 +12,7 @@
 #include "absl/cleanup/cleanup.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "crc32c.h"
 #include "event2/buffer.h"
 #include "event2/bufferevent.h"
 #include "event2/event.h"
@@ -61,6 +62,15 @@ class Gateway {
     auto self = static_cast<Gateway *>(void_self);
     auto &buf_ = self->buf_;
 
+    auto get_crc = [](MessageView message) {
+      crc_t crc;
+      crc = crc_init();
+      crc = crc_update(crc, message.crc_data().BackingStorage().data(),
+                       message.crc_data().BackingStorage().SizeInBytes());
+      crc = crc_finalize(crc);
+      return crc;
+    };
+
     std::vector<uint8_t> tmp(
         evbuffer_get_length(bufferevent_get_input(self->connection_)));
     tmp.resize(bufferevent_read(self->connection_, tmp.data(), tmp.size()));
@@ -70,7 +80,7 @@ class Gateway {
     for (int offset = 0; offset < MessageView::SizeInBytes(); ++offset) {
       auto view =
           MakeMessageView(buf_.data() + offset, MessageView::SizeInBytes());
-      if (view.Ok()) {
+      if (view.Ok() && get_crc(view) == view.crc().Read()) {
         std::cout << emboss::WriteToString(view) << std::endl;
         buf_.erase(buf_.begin() + offset,
                    buf_.begin() + offset + MessageView::SizeInBytes());

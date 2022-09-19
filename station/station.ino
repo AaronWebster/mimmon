@@ -1,3 +1,4 @@
+#include "crc32c.h"
 #include "heltec.h"
 #include "messages.emb.h"
 
@@ -24,6 +25,13 @@ void setup() {
 void loop() {
   sequence_id = std::max(sequence_id + 1, 1);
   message.sequence_id().Write(sequence_id);
+  crc_t crc;
+  crc = crc_init();
+  crc = crc_update(crc, message.crc_data().BackingStorage().data(),
+                   message.crc_data().BackingStorage().SizeInBytes());
+  crc = crc_finalize(crc);
+  message.crc().Write(crc);
+
   // std::string result = emboss::WriteToString(message);
   Serial.write(message.BackingStorage().data(), message.SizeInBytes());
 

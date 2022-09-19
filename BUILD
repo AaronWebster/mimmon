@@ -23,6 +23,7 @@ cc_binary(
     srcs = ["gateway.cc"],
     deps = [
         ":logging",
+        ":crc32c",
         ":messages_emboss",
         "@com_github_libevent_libevent//:event",
         "@com_google_absl//absl/base",
@@ -36,6 +37,12 @@ cc_binary(
 cc_library(
     name = "logging",
     hdrs = ["logging.h"],
+    deps = [],
+)
+
+cc_library(
+    name = "crc32c",
+    hdrs = ["crc32c.h"],
     deps = [],
 )
 
