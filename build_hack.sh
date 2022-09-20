@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-bazel build :all
+bazel build -c opt :all
 cp bazel-bin/messages.emb.h station/
 cp bazel-mimmon/external/com_google_emboss/runtime/cpp/emboss* station/
 cp crc32c.h station/

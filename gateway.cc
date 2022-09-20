@@ -58,29 +58,28 @@ class Gateway {
   }
 
  private:
+  static bool MessageCrcIsValid(MessageView message) {
+    crc_t crc = crc_init();
+    crc = crc_update(crc, message.BackingStorage().data(),
+                     message.SizeInBytes() - message.crc().SizeInBits() / 8);
+    crc = crc_finalize(crc);
+    return crc == message.crc().Read();
+  }
+
   static void ReadCallback(bufferevent *bev, void *void_self) {
     auto self = static_cast<Gateway *>(void_self);
     auto &buf_ = self->buf_;
-
-    auto get_crc = [](MessageView message) {
-      crc_t crc;
-      crc = crc_init();
-      crc = crc_update(crc, message.crc_data().BackingStorage().data(),
-                       message.crc_data().BackingStorage().SizeInBytes());
-      crc = crc_finalize(crc);
-      return crc;
-    };
 
     std::vector<uint8_t> tmp(
         evbuffer_get_length(bufferevent_get_input(self->connection_)));
     tmp.resize(bufferevent_read(self->connection_, tmp.data(), tmp.size()));
     std::copy(tmp.begin(), tmp.end(), std::back_inserter(buf_));
 
-    if (buf_.size() < 2 * MessageView::SizeInBytes()) return;
+    if (buf_.size() < MessageView::SizeInBytes()) return;
     for (int offset = 0; offset < MessageView::SizeInBytes(); ++offset) {
       auto view =
           MakeMessageView(buf_.data() + offset, MessageView::SizeInBytes());
-      if (view.Ok() && get_crc(view) == view.crc().Read()) {
+      if (view.Ok() && MessageCrcIsValid(view)) {
         std::cout << emboss::WriteToString(view) << std::endl;
         buf_.erase(buf_.begin() + offset,
                    buf_.begin() + offset + MessageView::SizeInBytes());
@@ -88,9 +87,7 @@ class Gateway {
     }
   }
 
-  static void WriteCallback(bufferevent *bev, void *void_self) {
-    // auto self = static_cast<Gateway *>(void_self);
-  }
+  static void WriteCallback(bufferevent *bev, void *void_self) {}
 
   static void EventCallback(bufferevent *bev, int16_t events, void *void_self) {
     auto self = static_cast<Gateway *>(void_self);
