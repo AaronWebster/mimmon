@@ -9,10 +9,10 @@ enum MeasurementType:
 
 struct Message:
   let magic_value = 0x6d696d6d6f6e
-  0  [+6]  UInt             magic             [requires: this == Message.magic_value]
-  6  [+2]  UInt             sequence_id
-  8  [+2]  UInt             station_id
-  8  [+2]  UInt             target_type
-  10 [+1]  MeasurementType  measurement_type
-  0  [+11] UInt:8[]         crc_data
-  11 [+4]  UInt             crc
+  0  [+6]   UInt             magic             [requires: this == Message.magic_value]
+  6  [+2]   UInt             sequence_id
+  8  [+2]   UInt             station_id
+  8  [+2]   UInt             target_type
+  10 [+1]   MeasurementType  measurement_type
+  0  [+11]  UInt:8[]         crc_data
+  11 [+4]   UInt             crc

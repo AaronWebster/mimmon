@@ -9,6 +9,7 @@ uint16_t sequence_id = 0;
 void setup() {
   message_buf.fill(0);
   message.magic().Write(message.magic_value().Read());
+  message.station_id().Write(1);
 
   Heltec.begin(/*DisplayEnable=*/true, /*LoRaEnable=*/true,
                /*SerialEnable=*/true, /*PABOOST=*/true, /*BAND=*/433e6);
@@ -23,8 +24,8 @@ void setup() {
 }
 
 void loop() {
-  sequence_id = std::max(sequence_id + 1, 1);
-  message.sequence_id().Write(sequence_id);
+  message.sequence_id().Write(std::max(message.sequence_id().Read() + 1, 1));
+
   crc_t crc;
   crc = crc_init();
   crc = crc_update(crc, message.crc_data().BackingStorage().data(),
